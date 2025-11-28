@@ -202,7 +202,7 @@ export default function AccountPage() {
               </div>
             </div>
           )}
-          {!requiringLogin && !missingCustomerId && sessionStatus !== "loading" && (
+          {!requiringLogin && !missingCustomerId &&(
             <div className="space-y-2 text-center">
               <p className="text-sm uppercase tracking-[0.4em] text-slate-400">My account</p>
               <h1 className="text-4xl font-bold">Welcome back, {customer?.displayName ?? user?.username ?? "friend"}.</h1>
@@ -213,7 +213,7 @@ export default function AccountPage() {
           )}
         </PageSection>
 
-        {!requiringLogin && !missingCustomerId && sessionStatus !== "loading" && (
+        {!requiringLogin && !missingCustomerId && (
           <PageSection>
             {loading && <LiquidLoader message="Loading your account…" />}
             {error && (

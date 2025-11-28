@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery } from "@apollo/client";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
-import { CHECKOUT_MUTATION, GET_CART } from "@/lib/queries";
+import { CHECKOUT_MUTATION, GET_ACCOUNT_OVERVIEW, GET_CART } from "@/lib/queries";
 import { PageWrapper } from "@/components/PageWrapper";
 import { PageSection } from "@/components/PageSection";
 import { LiquidLoader } from "@/components/LiquidLoader";
@@ -42,9 +42,16 @@ const resolveShippingCost = (method: ShippingMethod | null) => {
 };
 
 export default function CheckoutPage() {
-  const { status: sessionStatus, authToken } = useSession();
+  const { status: sessionStatus, authToken, user } = useSession();
   const { showSnackbar } = useSnackbar();
   const shouldFetch = sessionStatus === "authenticated" && Boolean(authToken);
+  const customerId =
+    typeof user?.databaseId === "number"
+      ? user.databaseId
+      : user?.databaseId
+      ? Number(user.databaseId)
+      : null;
+
   const { data, loading, error, refetch } = useQuery(GET_CART, {
     fetchPolicy: "no-cache",
     skip: !shouldFetch,
@@ -67,13 +74,54 @@ export default function CheckoutPage() {
     { value: "EUR", label: "€ EUR" },
   ];
   const [currency, setCurrency] = useState(currencyOptions[0].value);
-  const currencySymbol = currency === "USD" ? "$" : currency === "EUR" ? "€" : "₹";
+  const currencyLocale = currency === "INR" ? "en-IN" : currency === "EUR" ? "de-DE" : "en-US";
+  const currencyFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat(currencyLocale, {
+        style: "currency",
+        currency,
+      }),
+    [currency, currencyLocale]
+  );
+  const formatCurrency = useCallback(
+    (value: number) => currencyFormatter.format(Number.isFinite(value) ? value : 0),
+    [currencyFormatter]
+  );
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "test";
   const paypalOptions = useMemo(
     () => ({ clientId: paypalClientId, currency }),
     [paypalClientId, currency]
   );
   const [checkoutOrder, { loading: placingOrder }] = useMutation(CHECKOUT_MUTATION);
+  const [shippingForm, setShippingForm] = useState({
+    firstName: "",
+    lastName: "",
+    phone: "",
+    email: "",
+    address1: "",
+    address2: "",
+    city: "",
+    state: "",
+    postcode: "",
+    country: "",
+  });
+  const {
+    data: accountData,
+    loading: accountLoading,
+    error: accountError,
+  } = useQuery(GET_ACCOUNT_OVERVIEW, {
+    skip: !shouldFetch || !customerId,
+    variables: { customerId },
+    fetchPolicy: "cache-first",
+    context: shouldFetch
+      ? {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        }
+      : undefined,
+  });
+  const customer = accountData?.customer ?? null;
 
   useEffect(() => {
     async function fetchShippingMethods() {
@@ -105,12 +153,37 @@ export default function CheckoutPage() {
     }
   }, [shippingMethods, selectedMethod]);
 
+  useEffect(() => {
+    if (!customer) return;
+    const source = customer.shipping ?? customer.billing ?? null;
+    setShippingForm((prev) => ({
+      firstName: source?.firstName ?? prev.firstName ?? "",
+      lastName: source?.lastName ?? prev.lastName ?? "",
+      phone: source?.phone ?? customer.billing?.phone ?? prev.phone ?? "",
+      email: customer.email ?? prev.email ?? user?.email ?? "",
+      address1: source?.address1 ?? prev.address1 ?? "",
+      address2: source?.address2 ?? prev.address2 ?? "",
+      city: source?.city ?? prev.city ?? "",
+      state: source?.state ?? prev.state ?? "",
+      postcode: source?.postcode ?? prev.postcode ?? "",
+      country: source?.country ?? prev.country ?? "",
+    }));
+  }, [customer, user]);
+
   const cart = data?.cart;
   const cartItems = cart?.contents?.nodes ?? [];
   const cartSubtotal = parseCurrency(cart?.subtotal ?? cart?.total);
   const isCartEmpty = (cart?.isEmpty ?? false) || cartItems.length === 0;
   const shippingCost = parseCurrency(resolveShippingCost(selectedMethod));
-  const orderTotal = (cartSubtotal + shippingCost).toFixed(2);
+  const orderTotalNumber = cartSubtotal + shippingCost;
+  const orderTotal = orderTotalNumber.toFixed(2);
+  const formattedCartSubtotal = useMemo(() => formatCurrency(cartSubtotal), [cartSubtotal, formatCurrency]);
+  const formattedShippingCost = useMemo(() => formatCurrency(shippingCost), [shippingCost, formatCurrency]);
+  const formattedOrderTotal = useMemo(() => formatCurrency(orderTotalNumber), [orderTotalNumber, formatCurrency]);
+  const handleShippingChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = event.target;
+    setShippingForm((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handlePayPalApprove = async (paypalData: any, actions: any) => {
     if (!authToken) {
@@ -125,6 +198,9 @@ export default function CheckoutPage() {
         paypalData?.payerID ? { key: "_paypal_payer_id", value: paypalData.payerID } : null,
         selectedMethod?.title ? { key: "_selected_shipping_service", value: selectedMethod.title } : null,
         currency ? { key: "_checkout_currency", value: currency } : null,
+        shippingForm.firstName || shippingForm.address1
+          ? { key: "_shipping_details_form", value: JSON.stringify(shippingForm) }
+          : null,
       ].filter(Boolean) as Array<{ key: string; value: string }>;
 
       await checkoutOrder({
@@ -249,68 +325,192 @@ export default function CheckoutPage() {
           )}
 
           {!loading && !error && !isCartEmpty && (
-            <div className="grid gap-6 lg:grid-cols-[1.2fr,0.8fr]">
-              <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Shipping methods</p>
-                  <h2 className="text-2xl font-semibold text-slate-900">Choose your carrier</h2>
-                </div>
-                {loadingShippingMethods && !shippingError && (
-                  <p className="text-sm text-slate-500">Fetching available shipping services…</p>
-                )}
-                {shippingError && (
-                  <div className="rounded-2xl border border-rose-200 bg-rose-50/80 p-4 text-sm text-rose-700">
-                    {shippingError}
+            <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
+              <div className="space-y-6">
+                <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Shipping details</p>
+                      <h2 className="text-2xl font-semibold text-slate-900">Where should we deliver?</h2>
+                      <p className="text-xs text-slate-500">
+                        Update the contact and address that should accompany this concierge order.
+                      </p>
+                    </div>
+                    <Link
+                      href="/account"
+                      className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-600"
+                    >
+                      Manage in account
+                    </Link>
                   </div>
-                )}
-                {!shippingError && !shippingMethods.length && (
-                  <p className="text-sm text-slate-500">No shipping options available right now. Please contact concierge.</p>
-                )}
-                {!!shippingMethods.length && (
-                  <div className="space-y-3">
-                    {shippingMethods.map((method) => {
-                      const cost = parseCurrency(resolveShippingCost(method));
-                      const isSelected = selectedMethod?.id === method.id;
-                      return (
-                        <label
-                          key={method.id}
-                          className={`flex cursor-pointer items-center justify-between rounded-2xl border p-4 transition ${
-                            isSelected ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-slate-50"
-                          }`}
-                        >
-                          <div>
-                            <p className="text-sm font-semibold">
-                              {method.title ?? method.method_id ?? "Shipping option"}
-                            </p>
-                            {method.zoneName && (
-                              <p className={`text-[0.65rem] uppercase tracking-[0.4em] ${isSelected ? "text-white/70" : "text-slate-400"}`}>
-                                {method.zoneName}
-                              </p>
-                            )}
-                            {method.description && (
-                              <p className={`text-xs ${isSelected ? "text-white/80" : "text-slate-500"}`}>
-                                {method.description}
-                              </p>
-                            )}
-                          </div>
-                          <div className="text-sm font-semibold">
-                            {currencySymbol}
-                            {cost.toFixed(2)}
-                          </div>
-                          <input
-                            type="radio"
-                            name="shipping"
-                            className="sr-only"
-                            checked={isSelected}
-                            onChange={() => setSelectedMethod(method)}
-                          />
-                        </label>
-                      );
-                    })}
+                  {accountLoading && <p className="text-sm text-slate-500">Syncing saved details…</p>}
+                  {accountError && (
+                    <p className="text-sm text-rose-600">Unable to load saved shipping details. You can still enter them manually.</p>
+                  )}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">First name *</label>
+                      <input
+                        name="firstName"
+                        value={shippingForm.firstName}
+                        onChange={handleShippingChange}
+                        required
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Last name *</label>
+                      <input
+                        name="lastName"
+                        value={shippingForm.lastName}
+                        onChange={handleShippingChange}
+                        required
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Phone *</label>
+                      <input
+                        name="phone"
+                        value={shippingForm.phone}
+                        onChange={handleShippingChange}
+                        required
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Email *</label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={shippingForm.email}
+                        onChange={handleShippingChange}
+                        required
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Street address *</label>
+                      <input
+                        name="address1"
+                        value={shippingForm.address1}
+                        onChange={handleShippingChange}
+                        required
+                        placeholder="House number and street name"
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Apartment, suite, etc.</label>
+                      <input
+                        name="address2"
+                        value={shippingForm.address2}
+                        onChange={handleShippingChange}
+                        placeholder="Apartment, suite, unit, etc."
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">City *</label>
+                      <input
+                        name="city"
+                        value={shippingForm.city}
+                        onChange={handleShippingChange}
+                        required
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">State *</label>
+                      <input
+                        name="state"
+                        value={shippingForm.state}
+                        onChange={handleShippingChange}
+                        required
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">PIN Code *</label>
+                      <input
+                        name="postcode"
+                        value={shippingForm.postcode}
+                        onChange={handleShippingChange}
+                        required
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Country *</label>
+                      <input
+                        name="country"
+                        value={shippingForm.country}
+                        onChange={handleShippingChange}
+                        required
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+                      />
+                    </div>
                   </div>
-                )}
-              </section>
+                </section>
 
+                <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Shipping methods</p>
+                    <h2 className="text-2xl font-semibold text-slate-900">Choose your carrier</h2>
+                  </div>
+                  {loadingShippingMethods && !shippingError && (
+                    <p className="text-sm text-slate-500">Fetching available shipping services…</p>
+                  )}
+                  {shippingError && (
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50/80 p-4 text-sm text-rose-700">
+                      {shippingError}
+                    </div>
+                  )}
+                  {!shippingError && !shippingMethods.length && (
+                    <p className="text-sm text-slate-500">No shipping options available right now. Please contact concierge.</p>
+                  )}
+                  {!!shippingMethods.length && (
+                    <div className="space-y-3">
+                      {shippingMethods.map((method) => {
+                        const cost = parseCurrency(resolveShippingCost(method));
+                        const isSelected = selectedMethod?.id === method.id;
+                        return (
+                          <label
+                            key={method.id}
+                            className={`flex cursor-pointer flex-col gap-2 rounded-2xl border p-4 transition md:flex-row md:items-center md:justify-between ${
+                              isSelected ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-slate-50"
+                            }`}
+                          >
+                            <div>
+                              <p className="text-sm font-semibold">
+                                {method.title ?? method.method_id ?? "Shipping option"}
+                              </p>
+                              {method.zoneName && (
+                                <p className={`text-[0.65rem] uppercase tracking-[0.4em] ${isSelected ? "text-white/70" : "text-slate-400"}`}>
+                                  {method.zoneName}
+                                </p>
+                              )}
+                              {method.description && (
+                                <p className={`text-xs ${isSelected ? "text-white/80" : "text-slate-500"}`}>
+                                  {method.description}
+                                </p>
+                              )}
+                            </div>
+                            <div className="text-sm font-semibold">{formatCurrency(cost)}</div>
+                            <input
+                              type="radio"
+                              name="shipping"
+                              className="sr-only"
+                              checked={isSelected}
+                              onChange={() => setSelectedMethod(method)}
+                            />
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              </div>
               <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
@@ -346,21 +546,23 @@ export default function CheckoutPage() {
                 <div className="space-y-2 border-t border-slate-200 pt-4 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Cart total</span>
-                    <span className="font-semibold" dangerouslySetInnerHTML={{ __html: cart?.total ?? "$0.00" }} />
+                    {cart?.subtotal ? (
+                      <span className="font-semibold" dangerouslySetInnerHTML={{ __html: cart.subtotal }} />
+                    ) : (
+                      <span className="font-semibold">{formattedCartSubtotal}</span>
+                    )}
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Shipping</span>
-                    <span className="font-semibold">
-                      {currencySymbol}
-                      {shippingCost.toFixed(2)}
-                    </span>
+                    {cart?.shippingTotal ? (
+                      <span className="font-semibold" dangerouslySetInnerHTML={{ __html: cart.shippingTotal }} />
+                    ) : (
+                      <span className="font-semibold">{formattedShippingCost}</span>
+                    )}
                   </div>
                   <div className="flex items-center justify-between text-base font-bold text-slate-900">
                     <span>Amount due</span>
-                    <span>
-                      {currencySymbol}
-                      {orderTotal}
-                    </span>
+                    <span>{formattedOrderTotal}</span>
                   </div>
                 </div>
                 <div>
@@ -371,6 +573,7 @@ export default function CheckoutPage() {
                       forceReRender={[orderTotal, selectedMethod?.id ?? "", placingOrder, currency]}
                       createOrder={(data, actions) => {
                         return actions.order.create({
+                          intent: "CAPTURE",
                           purchase_units: [
                             {
                               amount: {

@@ -141,9 +141,8 @@ className = "relative overflow-hidden rounded-[2.5rem] border border-slate-100 b
   animate = "visible"
   variants = {{
     hidden: { },
-    visible: { staggerChildren: 0.08 },
-  }
-}
+    visible: { transition: { staggerChildren: 0.08 } },
+  }}
 className = "flex gap-3 overflow-x-auto pb-2 scrollbar-hide"
   >
 {

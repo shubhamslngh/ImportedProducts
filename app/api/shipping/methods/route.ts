@@ -47,6 +47,7 @@ const normalizeMethod = (method: any, zone?: any) => {
     zoneName: zone?.name ?? null,
   };
 };
+type NormalizedMethod = ReturnType<typeof normalizeMethod>;
 
 async function requestJson(url: string, headers: Record<string, string>) {
   const response = await fetch(url, { headers, cache: 'no-store' });
@@ -104,7 +105,7 @@ export async function GET() {
     const rawMethods = await loadRawMethods(headers);
     const normalized = rawMethods
       .map((method: any) => normalizeMethod(method, method?.zone))
-      .filter((method) => method.rateId);
+      .filter((method: NormalizedMethod) => Boolean(method.rateId));
     return NextResponse.json({ methods: normalized });
   } catch (error: any) {
     if (error instanceof WooRequestError) {

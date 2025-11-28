@@ -7,7 +7,7 @@ import { useMutation, useQuery } from '@apollo/client';
 import { PageWrapper } from '@/components/PageWrapper';
 import { PageSection } from '@/components/PageSection';
 import { LiquidLoader } from '@/components/LiquidLoader';
-import { useCart } from '@/lib/cart-context';
+import { useCart, CartItem } from '@/lib/cart-context';
 import { GET_CART, REMOVE_CART_ITEMS, UPDATE_CART_ITEMS } from '@/lib/queries';
 import { useSession } from '@/lib/session-context';
 import { useSnackbar } from '@/components/SnackbarProvider';
@@ -32,7 +32,7 @@ export default function CartPage() {
   const [updateItems] = useMutation(UPDATE_CART_ITEMS);
   const [removeCartItems] = useMutation(REMOVE_CART_ITEMS);
 
-  const remoteItems = useMemo(() => {
+  const remoteItems = useMemo((): CartItem[] => {
     const nodes = data?.cart?.contents?.nodes ?? [];
     return nodes.map((node: any) => {
       const productNode = node?.product?.node;
@@ -149,7 +149,7 @@ export default function CartPage() {
               </div>
             </div>
           )}
-          {!requiringLogin && sessionStatus !== 'loading' && (
+          {sessionStatus === 'authenticated' && (
             <div className="space-y-2 text-center">
               <p className="text-sm uppercase tracking-[0.4em] text-slate-400">Your cart</p>
               <h1 className="text-4xl font-bold">Ready for checkout</h1>
@@ -159,7 +159,7 @@ export default function CartPage() {
             </div>
           )}
         </PageSection>
-        {!requiringLogin && sessionStatus !== 'loading' && (
+        {sessionStatus === 'authenticated' && (
           <PageSection>
           {loading && <LiquidLoader message="Fetching cart…" />}
           {error && (
@@ -200,7 +200,9 @@ export default function CartPage() {
           {!loading && !error && !isEmpty && (
             <div className="space-y-6">
               <ul className="space-y-4">
-                {remoteItems.map((item) => (
+                {remoteItems.map((item: CartItem) => {
+                  const remoteKey = item.key ?? item.id;
+                  return (
                   <li
                     key={item.id}
                     className="flex flex-col gap-4 rounded-3xl border border-slate-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center"
@@ -231,9 +233,9 @@ export default function CartPage() {
                       <div className="flex items-center gap-3 text-xs text-slate-500">
                         <button
                           type="button"
-                          onClick={() => handleQuantityChange(item.key, item.quantity - 1)}
+                          onClick={() => handleQuantityChange(remoteKey, item.quantity - 1)}
                           className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-base text-slate-700 disabled:opacity-40"
-                          disabled={pendingKey === item.key}
+                          disabled={pendingKey === remoteKey}
                           aria-label="Decrease quantity"
                         >
                           −
@@ -243,9 +245,9 @@ export default function CartPage() {
                         </span>
                         <button
                           type="button"
-                          onClick={() => handleQuantityChange(item.key, item.quantity + 1)}
+                          onClick={() => handleQuantityChange(remoteKey, item.quantity + 1)}
                           className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-base text-slate-700 disabled:opacity-40"
-                          disabled={pendingKey === item.key}
+                          disabled={pendingKey === remoteKey}
                           aria-label="Increase quantity"
                         >
                           +
@@ -254,14 +256,15 @@ export default function CartPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleRemove(item.key)}
+                      onClick={() => handleRemove(remoteKey)}
                       className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 transition hover:border-slate-400 disabled:opacity-50"
-                      disabled={pendingKey === item.key}
+                      disabled={pendingKey === remoteKey}
                     >
                       Remove
                     </button>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
 
               <div className="rounded-3xl border border-slate-100 bg-white/80 p-6 shadow-sm">

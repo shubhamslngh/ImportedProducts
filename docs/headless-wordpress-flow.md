@@ -14,7 +14,15 @@ This document outlines how the Next.js storefront in `next-app/` operates as the
 
 ## 2. Configure the Next.js app
 
-1. The project points at `https://importedproducts.in/graphql` (matching the existing Nuxt storefront), so no extra environment variables are required for data or cart operations.
+1. Define the storefront endpoints in `.env`:
+   ```
+   NEXT_WP_GRAPHQL_ENDPOINT=https://importedproducts.in/graphql
+   NEXT_WC_API_BASE=https://importedproducts.in/wp-json/wc/v3
+   NEXT_WC_CONSUMER_KEY=ck_xxx
+   NEXT_WC_CONSUMER_SECRET=cs_xxx
+   NEXT_PUBLIC_PAYPAL_CLIENT_ID=your_paypal_client_id
+   ```
+   The Next.js config mirrors the non-public values to `NEXT_PUBLIC_*` counterparts where required so the client bundle can reach WPGraphQL without re-declaring secrets.
 2. Install dependencies and run locally:
    ```bash
    cd /Users/shubhamsingh/namma/next-app

@@ -10,6 +10,7 @@ import { PageSection } from "@/components/PageSection";
 import { LiquidLoader } from "@/components/LiquidLoader";
 import { useSession } from "@/lib/session-context";
 import { useSnackbar } from "@/components/SnackbarProvider";
+import { PAYPAL_CLIENT_ID } from "@/lib/env";
 
 interface ShippingMethod {
   id: string;
@@ -87,10 +88,9 @@ export default function CheckoutPage() {
     (value: number) => currencyFormatter.format(Number.isFinite(value) ? value : 0),
     [currencyFormatter]
   );
-  const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "test";
   const paypalOptions = useMemo(
-    () => ({ clientId: paypalClientId, currency }),
-    [paypalClientId, currency]
+    () => ({ clientId: PAYPAL_CLIENT_ID, currency }),
+    [currency]
   );
   const [checkoutOrder, { loading: placingOrder }] = useMutation(CHECKOUT_MUTATION);
   const [shippingForm, setShippingForm] = useState({

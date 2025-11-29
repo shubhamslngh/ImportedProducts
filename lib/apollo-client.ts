@@ -1,8 +1,7 @@
 'use client';
 
 import { ApolloClient, InMemoryCache, HttpLink, NormalizedCacheObject } from '@apollo/client';
-
-const WORDPRESS_GRAPHQL_ENDPOINT = 'https://importedproducts.in/graphql';
+import { WP_GRAPHQL_ENDPOINT } from './env';
 
 let client: ApolloClient<NormalizedCacheObject> | null = null;
 
@@ -11,7 +10,7 @@ export function getApolloClient() {
 
   client = new ApolloClient({
     link: new HttpLink({
-      uri: WORDPRESS_GRAPHQL_ENDPOINT,
+      uri: WP_GRAPHQL_ENDPOINT,
     }),
     cache: new InMemoryCache({ addTypename: true }),
     defaultOptions: {

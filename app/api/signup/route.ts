@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-
-const WP_GRAPHQL_ENDPOINT = 'https://importedproducts.in/graphql';
+import { SERVER_WP_GRAPHQL_ENDPOINT } from '@/lib/env.server';
 
 const REGISTER_MUTATION = `
   mutation RegisterUser($username: String!, $email: String!, $password: String!) {
@@ -73,7 +72,7 @@ export async function POST(request: Request) {
   const password = generatePassword();
 
   try {
-    const registerResponse = await fetch(WP_GRAPHQL_ENDPOINT, {
+    const registerResponse = await fetch(SERVER_WP_GRAPHQL_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -91,7 +90,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const loginResponse = await fetch(WP_GRAPHQL_ENDPOINT, {
+    const loginResponse = await fetch(SERVER_WP_GRAPHQL_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -110,7 +109,7 @@ export async function POST(request: Request) {
     }
 
     // Fire-and-forget password reset email so the shopper can set their own password.
-    fetch(WP_GRAPHQL_ENDPOINT, {
+    fetch(SERVER_WP_GRAPHQL_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

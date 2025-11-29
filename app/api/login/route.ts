@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-
+import { SERVER_WP_GRAPHQL_ENDPOINT } from '@/lib/env.server';
 
 const LOGIN_MUTATION = `
   mutation Login($username: String!, $password: String!) {
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const response = await fetch(WP_GRAPHQL_ENDPOINT, {
+    const response = await fetch(SERVER_WP_GRAPHQL_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

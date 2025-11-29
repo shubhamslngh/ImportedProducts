@@ -1,8 +1,7 @@
 'use client';
 
 import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-
-const WORDPRESS_GRAPHQL_ENDPOINT = 'https://importedproducts.in/graphql';
+import { WP_GRAPHQL_ENDPOINT } from './env';
 const REFRESH_AUTH_MUTATION = `
   mutation RefreshAuthToken($jwtRefreshToken: String!) {
     refreshJwtAuthToken(input: { jwtRefreshToken: $jwtRefreshToken }) {
@@ -129,7 +128,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
     setIsRefreshing(true);
     try {
-      const response = await fetch(WORDPRESS_GRAPHQL_ENDPOINT, {
+      const response = await fetch(WP_GRAPHQL_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

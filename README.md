@@ -19,18 +19,19 @@ pnpm dev       # starts http://localhost:3000
 
 ### Environment variables
 
-The storefront (data + cart mutations) talks to `https://importedproducts.in/graphql`, the same endpoint used by the Nuxt build. To enable WooCommerce REST fallbacks, shipping methods, and PayPal sandbox, set:
+The storefront (data + cart mutations) talks to `https://importedproducts.in/graphql`, the same endpoint used by the Nuxt build. To keep the endpoints configurable while exposing the minimum surface area client-side, set:
 
 ```
-WC_CONSUMER_KEY=ck_xxx
-WC_CONSUMER_SECRET=cs_xxx
-WC_API_BASE=https://importedproducts.in/wp-json/wc/v3
-# Optional: override when you only want to hit one zone endpoint
-WC_SHIPPING_ENDPOINT=https://importedproducts.in/wp-json/wc/v3/shipping/zones/1/methods
+NEXT_WP_GRAPHQL_ENDPOINT=https://importedproducts.in/graphql
+NEXT_WC_API_BASE=https://importedproducts.in/wp-json/wc/v3
+NEXT_WC_CONSUMER_KEY=ck_xxx
+NEXT_WC_CONSUMER_SECRET=cs_xxx
+# Optional: override a specific zone endpoint for shipping lookups
+NEXT_WC_SHIPPING_ENDPOINT=https://importedproducts.in/wp-json/wc/v3/shipping/zones/1/methods
 NEXT_PUBLIC_PAYPAL_CLIENT_ID=your_paypal_client_id
 ```
 
-If `WC_SHIPPING_ENDPOINT` is not provided the app walks through every zone from `WC_API_BASE` and normalizes the rate IDs (`flat_rate:INSTANCE_ID`). PayPal defaults to the `'test'` client when no key is set, so remember to provide a real sandbox/production client ID per environment.
+At build time the Next.js config mirrors the non-public values into their `NEXT_PUBLIC_*` counterparts so the client bundle can hit WPGraphQL without re-declaring variables. If `NEXT_WC_SHIPPING_ENDPOINT` is not provided the `/api/shipping/methods` proxy walks every zone using `NEXT_WC_API_BASE` and normalizes the rate IDs (`flat_rate:INSTANCE_ID`). PayPal defaults to the `'test'` client when no key is set, so remember to provide a real sandbox/production client ID per environment.
 
 ## Project structure
 

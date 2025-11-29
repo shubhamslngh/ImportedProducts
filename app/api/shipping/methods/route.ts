@@ -1,5 +1,11 @@
 import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
+import {
+  SERVER_WC_API_BASE,
+  SERVER_WC_CONSUMER_KEY,
+  SERVER_WC_CONSUMER_SECRET,
+  SERVER_WC_SHIPPING_ENDPOINT,
+} from '@/lib/env.server';
 
 
 class WooRequestError extends Error {
@@ -56,7 +62,7 @@ async function requestJson(url: string, headers: Record<string, string>) {
 }
 
 async function loadRawMethods(headers: Record<string, string>) {
-  const explicitEndpoint = process.env.WC_SHIPPING_ENDPOINT;
+  const explicitEndpoint = SERVER_WC_SHIPPING_ENDPOINT;
   if (explicitEndpoint) {
     const payload = await requestJson(explicitEndpoint, headers);
     if (Array.isArray(payload)) {
@@ -68,7 +74,7 @@ async function loadRawMethods(headers: Record<string, string>) {
     return [];
   }
 
-  const apiBase = process.env.NEXT_WC_API_BASE || DEFAULT_API_BASE;
+  const apiBase = SERVER_WC_API_BASE;
   const zones = await requestJson(`${apiBase}/shipping/zones`, headers);
   if (!Array.isArray(zones) || zones.length === 0) {
     return requestJson(`${apiBase}/shipping_methods`, headers);
@@ -92,8 +98,15 @@ async function loadRawMethods(headers: Record<string, string>) {
 }
 
 export async function GET() {
-  const consumerKey = process.env.NEXT_WC_CONSUMER_KEY || FALLBACK_KEY;
-  const consumerSecret = process.env.NEXT_WC_CONSUMER_SECRET || FALLBACK_SECRET;
+  const consumerKey = SERVER_WC_CONSUMER_KEY;
+  const consumerSecret = SERVER_WC_CONSUMER_SECRET;
+  if (!consumerKey || !consumerSecret) {
+    return NextResponse.json(
+      { error: 'WooCommerce credentials missing', details: 'Set NEXT_WC_CONSUMER_KEY and NEXT_WC_CONSUMER_SECRET.' },
+      { status: 500 },
+    );
+  }
+
   const headers = {
     Authorization: `Basic ${Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64')}`,
   };

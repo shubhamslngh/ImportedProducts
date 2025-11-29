@@ -6,7 +6,7 @@ import { useMutation, useQuery } from "@apollo/client";
 import { LiquidLoader } from "@/components/LiquidLoader";
 import { PageWrapper } from "@/components/PageWrapper";
 import { PageSection } from "@/components/PageSection";
-import { GET_ACCOUNT_OVERVIEW, UPDATE_BILLING_DETAILS, GET_COUNTRIES } from "@/lib/queries";
+import { GET_ACCOUNT_OVERVIEW, UPDATE_BILLING_DETAILS, GET_COUNTRIES, UPDATE_SHIPPING_DETAILS } from "@/lib/queries";
 import { useSession } from "@/lib/session-context";
 import { useSnackbar } from "@/components/SnackbarProvider";
 
@@ -83,6 +83,7 @@ export default function AccountPage() {
   const customer = data?.customer ?? null;
   const orders = useMemo(() => customer?.orders?.nodes ?? [], [customer]);
   const [saveBilling, { loading: savingBilling }] = useMutation(UPDATE_BILLING_DETAILS);
+  const [saveShipping, { loading: savingShipping }] = useMutation(UPDATE_SHIPPING_DETAILS);
   const [billingForm, setBillingForm] = useState({
     firstName: "",
     lastName: "",
@@ -94,6 +95,17 @@ export default function AccountPage() {
     postcode: "",
     phone: "",
     email: "",
+  });
+  const [shippingForm, setShippingForm] = useState({
+    firstName: "",
+    lastName: "",
+    country: "",
+    address1: "",
+    address2: "",
+    city: "",
+    state: "",
+    postcode: "",
+    phone: "",
   });
 
   const requiringLogin = sessionStatus !== "authenticated";
@@ -119,12 +131,70 @@ export default function AccountPage() {
       phone: customer.billing?.phone ?? "",
       email: customer.email ?? user?.email ?? "",
     });
+    setShippingForm({
+      firstName: customer.shipping?.firstName ?? "",
+      lastName: customer.shipping?.lastName ?? "",
+      country: customer.shipping?.country ?? "",
+      address1: customer.shipping?.address1 ?? "",
+      address2: customer.shipping?.address2 ?? "",
+      city: customer.shipping?.city ?? "",
+      state: customer.shipping?.state ?? "",
+      postcode: customer.shipping?.postcode ?? "",
+      phone: customer.shipping?.phone ?? customer.billing?.phone ?? "",
+    });
   }, [customer, user]);
 
   const handleBillingChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = event.target;
     setBillingForm((prev) => ({ ...prev, [name]: value }));
   };
+
+  const handleShippingChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = event.target;
+    setShippingForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleShippingSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!customerId || !authToken) return;
+    try {
+      await saveShipping({
+        variables: {
+          customerId: String(customerId),
+          shipping: {
+            firstName: shippingForm.firstName,
+            lastName: shippingForm.lastName,
+            country: shippingForm.country,
+            address1: shippingForm.address1,
+            address2: shippingForm.address2,
+            city: shippingForm.city,
+            state: shippingForm.state,
+            postcode: shippingForm.postcode,
+            phone: shippingForm.phone,
+          },
+        },
+        context: {
+          headers: { Authorization: `Bearer ${authToken}` },
+        },
+      });
+      showSnackbar("Shipping details updated.", { variant: "success" });
+      refetch();
+    } catch (mutationError: any) {
+      console.error(mutationError);
+      showSnackbar("Could not update shipping address.", { variant: "error" });
+    }
+  };
+
+  const renderCountryOptions = () =>
+    countries.map((country: any) => {
+      const value = country;
+      const label = country;
+      return (
+        <option key={value || label} value={value}>
+          {label}
+        </option>
+      );
+    });
 
   const handleBillingSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -287,11 +357,7 @@ export default function AccountPage() {
                         className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
                       >
                         <option value="">Select a country / region…</option>
-                        {countries.map((country: any) => (
-                          <option key={country.code} value={country.code}>
-                            {country.country}
-                          </option>
-                        ))}
+                        {renderCountryOptions()}
                       </select>
                     </div>
                     <div>
@@ -374,6 +440,119 @@ export default function AccountPage() {
                         className="rounded-full bg-slate-900 px-6 py-3 text-xs font-semibold uppercase tracking-[0.3em] text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-500"
                       >
                         {savingBilling ? "Saving…" : "Save changes"}
+                      </button>
+                    </div>
+                  </form>
+                </section>
+
+                <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Shipping address</p>
+                      <h2 className="text-2xl font-semibold">Delivery details</h2>
+                    </div>
+                  </div>
+                  <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={handleShippingSubmit}>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">First name *</label>
+                      <input
+                        required
+                        name="firstName"
+                        value={shippingForm.firstName}
+                        onChange={handleShippingChange}
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Last name *</label>
+                      <input
+                        required
+                        name="lastName"
+                        value={shippingForm.lastName}
+                        onChange={handleShippingChange}
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Country / Region *</label>
+                      <select
+                        required
+                        name="country"
+                        value={shippingForm.country}
+                        onChange={handleShippingChange}
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+                      >
+                        <option value="">Select a country / region…</option>
+                        {renderCountryOptions()}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Street address *</label>
+                      <input
+                        required
+                        name="address1"
+                        value={shippingForm.address1}
+                        onChange={handleShippingChange}
+                        placeholder="House number and street name"
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Apartment, suite, etc.</label>
+                      <input
+                        name="address2"
+                        value={shippingForm.address2}
+                        onChange={handleShippingChange}
+                        placeholder="Apartment, suite, unit, etc."
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Town / City *</label>
+                      <input
+                        required
+                        name="city"
+                        value={shippingForm.city}
+                        onChange={handleShippingChange}
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">State *</label>
+                      <input
+                        required
+                        name="state"
+                        value={shippingForm.state}
+                        onChange={handleShippingChange}
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">PIN Code *</label>
+                      <input
+                        required
+                        name="postcode"
+                        value={shippingForm.postcode}
+                        onChange={handleShippingChange}
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Phone</label>
+                      <input
+                        name="phone"
+                        value={shippingForm.phone}
+                        onChange={handleShippingChange}
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div className="md:col-span-2 flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={savingShipping}
+                        className="rounded-full bg-slate-900 px-6 py-3 text-xs font-semibold uppercase tracking-[0.3em] text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-500"
+                      >
+                        {savingShipping ? "Saving…" : "Save shipping"}
                       </button>
                     </div>
                   </form>

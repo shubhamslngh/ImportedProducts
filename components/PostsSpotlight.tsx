@@ -63,7 +63,7 @@ export function PostsSpotlight() {
   className = "group relative flex flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-md transition hover:-translate-y-1 hover:shadow-2xl"
     >
     {/* World map background texture */ }
-    < div className = "absolute inset-0 pointer-events-none opacity-[0.08] bg-[url('/world-map.svg')] bg-cover bg-center" />
+    < div className = "absolute inset-0 pointer-events-none opacity-[0.08] bg-[url('/world.svg')] bg-cover bg-center" />
 
       {/* Side gradient strip */ }
       < div className = "absolute right-0 top-0 h-full w-1.5 bg-gradient-to-b from-blue-500 via-black-400 to-black opacity-80 transition group-hover:opacity-100" />

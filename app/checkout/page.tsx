@@ -123,35 +123,35 @@ export default function CheckoutPage() {
   });
   const customer = accountData?.customer ?? null;
 
-  useEffect(() => {
-    async function fetchShippingMethods() {
-      setLoadingShippingMethods(true);
-      try {
-        setShippingError(null);
-        const response = await fetch("/api/shipping/methods");
-        const payload = await response.json();
-        if (!response.ok) {
-          throw new Error(payload?.error || "Unable to load shipping methods");
-        }
-        const methods = Array.isArray(payload?.methods) ? payload.methods : [];
-        setShippingMethods(methods);
-      } catch (err: any) {
-        console.error(err);
-        const message = err?.message || "Unable to load shipping methods";
-        setShippingError(message);
-        showSnackbar(message, { variant: "error" });
-      } finally {
-        setLoadingShippingMethods(false);
-      }
-    }
-    fetchShippingMethods();
-  }, [showSnackbar]);
+  // useEffect(() => {
+  //   async function fetchShippingMethods() {
+  //     setLoadingShippingMethods(true);
+  //     try {
+  //       setShippingError(null);
+  //       const response = await fetch("/api/shipping/methods");
+  //       const payload = await response.json();
+  //       if (!response.ok) {
+  //         throw new Error(payload?.error || "Unable to load shipping methods");
+  //       }
+  //       const methods = Array.isArray(payload?.methods) ? payload.methods : [];
+  //       setShippingMethods(methods);
+  //     } catch (err: any) {
+  //       console.error(err);
+  //       const message = err?.message || "Unable to load shipping methods";
+  //       setShippingError(message);
+  //       showSnackbar(message, { variant: "error" });
+  //     } finally {
+  //       setLoadingShippingMethods(false);
+  //     }
+  //   }
+  //   fetchShippingMethods();
+  // }, [showSnackbar]);
 
-  useEffect(() => {
-    if (!selectedMethod && shippingMethods.length) {
-      setSelectedMethod(shippingMethods[0]);
-    }
-  }, [shippingMethods, selectedMethod]);
+  // useEffect(() => {
+  //   if (!selectedMethod && shippingMethods.length) {
+  //     setSelectedMethod(shippingMethods[0]);
+  //   }
+  // }, [shippingMethods, selectedMethod]);
 
   useEffect(() => {
     if (!customer) return;
@@ -453,63 +453,7 @@ export default function CheckoutPage() {
                   </div>
                 </section>
 
-                <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Shipping methods</p>
-                    <h2 className="text-2xl font-semibold text-slate-900">Choose your carrier</h2>
-                  </div>
-                  {loadingShippingMethods && !shippingError && (
-                    <p className="text-sm text-slate-500">Fetching available shipping services…</p>
-                  )}
-                  {shippingError && (
-                    <div className="rounded-2xl border border-rose-200 bg-rose-50/80 p-4 text-sm text-rose-700">
-                      {shippingError}
-                    </div>
-                  )}
-                  {!shippingError && !shippingMethods.length && (
-                    <p className="text-sm text-slate-500">No shipping options available right now. Please contact concierge.</p>
-                  )}
-                  {!!shippingMethods.length && (
-                    <div className="space-y-3">
-                      {shippingMethods.map((method) => {
-                        const cost = parseCurrency(resolveShippingCost(method));
-                        const isSelected = selectedMethod?.id === method.id;
-                        return (
-                          <label
-                            key={method.id}
-                            className={`flex cursor-pointer flex-col gap-2 rounded-2xl border p-4 transition md:flex-row md:items-center md:justify-between ${
-                              isSelected ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-slate-50"
-                            }`}
-                          >
-                            <div>
-                              <p className="text-sm font-semibold">
-                                {method.title ?? method.method_id ?? "Shipping option"}
-                              </p>
-                              {method.zoneName && (
-                                <p className={`text-[0.65rem] uppercase tracking-[0.4em] ${isSelected ? "text-white/70" : "text-slate-400"}`}>
-                                  {method.zoneName}
-                                </p>
-                              )}
-                              {method.description && (
-                                <p className={`text-xs ${isSelected ? "text-white/80" : "text-slate-500"}`}>
-                                  {method.description}
-                                </p>
-                              )}
-                            </div>
-                            <div className="text-sm font-semibold">{formatCurrency(cost)}</div>
-                            <input
-                              type="radio"
-                              name="shipping"
-                              className="sr-only"
-                              checked={isSelected}
-                              onChange={() => setSelectedMethod(method)}
-                            />
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                </section>
+                
               </div>
               <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-4">
@@ -517,27 +461,16 @@ export default function CheckoutPage() {
                     <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Order summary</p>
                     <h2 className="text-xl font-semibold text-slate-900">{cartItems.length} item(s)</h2>
                   </div>
-                  <label className="space-y-1 text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
-                    Currency
-                    <select
-                      value={currency}
-                      onChange={(event) => setCurrency(event.target.value)}
-                      className="mt-1 rounded-2xl border border-slate-200 px-3 py-2 text-[0.7rem] font-semibold uppercase tracking-[0.3em] text-slate-700 focus:border-slate-900 focus:outline-none"
-                    >
-                      {currencyOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  
                 </div>
                 <ul className="space-y-3">
                   {cartItems.map((item: any) => (
                     <li key={item.key} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
-                      <p className="text-sm font-semibold text-slate-900">{item.product?.node?.name ?? "Product"}</p>
+                  <p className="text-sm font-semibold text-slate-900" > { item.product?.node?.name ?? "Product" } </p>
+                  < p className = "text-xs text-slate-500" > Subtotal: { item.subtotal } </p>
+
                       {item.variation && (
-                        <p className="text-xs text-slate-500">Variation #{item.variation.node?.databaseId}</p>
+                        <p className="text-xs text-slate-500">Variation #{item.variation.node?.name}</p>
                       )}
                       <p className="text-xs text-slate-500">Qty {item.quantity}</p>
                     </li>

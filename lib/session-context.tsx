@@ -1,24 +1,17 @@
 'use client';
 
-import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { WP_GRAPHQL_ENDPOINT } from './env';
 const REFRESH_AUTH_MUTATION = `
-  mutation RefreshAuthToken($jwtRefreshToken: String!) {
-    refreshJwtAuthToken(input: { jwtRefreshToken: $jwtRefreshToken }) {
+  mutation RefreshAuthToken($refreshToken: String!) {
+    refreshToken(input: { refreshToken: $refreshToken }) {
       authToken
-      refreshToken
-      user {
-        id
-        databaseId
-        username
-        email
-        firstName
-        lastName
-        name
-      }
+      success
+      clientMutationId
     }
   }
 `;
+
 
 type SessionUser = {
   username?: string | null;
@@ -51,6 +44,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const refreshPromiseRef = useRef<Promise<string | null> | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -126,39 +120,55 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       clearSession();
       return null;
     }
+
     setIsRefreshing(true);
+
     try {
       const response = await fetch(WP_GRAPHQL_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: REFRESH_AUTH_MUTATION,
-          variables: { jwtRefreshToken: refreshToken },
+          variables: { refreshToken },
         }),
       });
 
       const result = await response.json();
-      const payload = result?.data?.refreshJwtAuthToken;
-      if (!response.ok || !payload?.authToken) {
+      const payload = result?.data?.refreshToken;
+
+      if (!payload?.authToken) {
         clearSession();
         return null;
       }
 
-      const mappedUser = mapUser(payload.user);
+      // WordPress does not return new refreshToken or user — reuse existing
       setSession({
         authToken: payload.authToken,
-        refreshToken: payload.refreshToken ?? refreshToken,
-        user: mappedUser ?? user ?? null,
+        refreshToken,
+        user,
       });
-      return payload.authToken as string;
+
+      return payload.authToken;
     } catch (error) {
-      console.error('Failed to refresh auth token', error);
+      console.error("Failed to refresh token", error);
       clearSession();
       return null;
     } finally {
       setIsRefreshing(false);
     }
-  }, [refreshToken, clearSession, setSession, user, mapUser]);
+  }, [refreshToken, clearSession, setSession, user]);
+
+  const ensureFreshToken = useCallback(() => {
+    if (!refreshToken) {
+      return Promise.resolve(null);
+    }
+    if (!refreshPromiseRef.current) {
+      refreshPromiseRef.current = refreshSession().finally(() => {
+        refreshPromiseRef.current = null;
+      });
+    }
+    return refreshPromiseRef.current;
+  }, [refreshSession, refreshToken]);
 
   useEffect(() => {
     if (!refreshToken || status !== 'authenticated') {
@@ -169,6 +179,31 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }, 55 * 60 * 1000); // roughly every 55 minutes
     return () => clearInterval(interval);
   }, [refreshToken, status, refreshSession]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !refreshToken) {
+      return;
+    }
+    const originalFetch = window.fetch.bind(window);
+
+    const patchedFetch: typeof fetch = async (input, init) => {
+      let response = await originalFetch(input, init);
+      if (response.status !== 403 || !refreshToken) {
+        return response;
+      }
+      const nextToken = await ensureFreshToken();
+      if (!nextToken) {
+        return response;
+      }
+      const [retryInput, retryInit] = rebuildRequestWithToken(input, init, nextToken);
+      return originalFetch(retryInput, retryInit);
+    };
+
+    window.fetch = patchedFetch;
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, [refreshToken, ensureFreshToken]);
 
   const value = useMemo<SessionValue>(
     () => ({
@@ -193,4 +228,34 @@ export function useSession() {
     throw new Error('useSession must be used within a SessionProvider');
   }
   return context;
+}
+
+function rebuildRequestWithToken(
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+  token: string,
+): [RequestInfo | URL, RequestInit | undefined] {
+  const applyAuth = (headers: Headers) => {
+    headers.set('Authorization', `Bearer ${token}`);
+  };
+
+  if (typeof Request !== 'undefined' && input instanceof Request) {
+    const cloned = input.clone();
+    const headers = new Headers(cloned.headers);
+    applyAuth(headers);
+    const nextRequest = new Request(cloned, { headers });
+
+    if (init?.headers) {
+      const initHeaders = new Headers(init.headers as HeadersInit);
+      applyAuth(initHeaders);
+      return [nextRequest, { ...init, headers: initHeaders }];
+    }
+
+    return [nextRequest, init];
+  }
+
+  const headers = new Headers(init?.headers ?? {});
+  applyAuth(headers);
+  const nextInit: RequestInit = { ...(init ?? {}), headers };
+  return [input, nextInit];
 }

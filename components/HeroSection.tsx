@@ -104,9 +104,9 @@ style = {{
       />
 
 {/* Background glow */ }
-<div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(76,219,196,0.25),_transparent_55%)] opacity-80 blur-3xl" />
+<div className="absolute  inset-0 bg-[radial-gradient(circle_at_top,_rgba(76,219,196,0.25),_transparent_55%)] opacity-80 blur-3xl" />
 
-  <div className="relative grid gap-10 p-8 md:p-12 lg:grid-cols-[1.15fr,0.85fr]" >
+  <div className="relative opacity-[1] bg-[url('/world.svg')] bg-cover bg-center grid gap-10 p-8 md:p-12 lg:grid-cols-[1.15fr,0.85fr]" >
     {/* LEFT SIDE */ }
     < motion.div
 initial = {{ opacity: 0, x: -25 }}

@@ -311,6 +311,26 @@ export const UPDATE_BILLING_DETAILS = gql`
   }
 `;
 
+export const UPDATE_SHIPPING_DETAILS = gql`
+  mutation UpdateShippingDetails($customerId: ID!, $shipping: CustomerAddressInput!) {
+    updateCustomer(input: { id: $customerId, shipping: $shipping }) {
+      customer {
+        databaseId
+        shipping {
+          firstName
+          lastName
+          country
+          address1
+          address2
+          city
+          state
+          postcode
+        }
+      }
+    }
+  }
+`;
+
 export const GET_RECENT_POSTS = gql`
   query GetRecentPosts {
     posts {
@@ -420,10 +440,7 @@ export const GET_COMMENTS_BY_POST = gql`
 
 export const GET_COUNTRIES = gql`
   query GetCountries {
-    countries {
-      code
-      country
-    }
+    countries 
   }
 `;
 export const GET_HERO_METRICS = gql`

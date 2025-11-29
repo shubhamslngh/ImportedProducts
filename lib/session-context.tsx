@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { WP_GRAPHQL_ENDPOINT } from './env';
+import { SERVER_WP_GRAPHQL_ENDPOINT } from '@/lib/env.server';
 const REFRESH_AUTH_MUTATION = `
   mutation RefreshAuthToken($refreshToken: String!) {
     refreshToken(input: { refreshToken: $refreshToken }) {
@@ -124,7 +124,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setIsRefreshing(true);
 
     try {
-      const response = await fetch(WP_GRAPHQL_ENDPOINT, {
+      console.log("GraphQL endpoint:", process.env.NEXT_PUBLIC_WP_GRAPHQL_ENDPOINT);
+      const response = await fetch(SERVER_WP_GRAPHQL_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

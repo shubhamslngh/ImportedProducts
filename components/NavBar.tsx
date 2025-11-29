@@ -31,6 +31,7 @@ export function NavBar() {
   };
 
   return (
+    <>
     <header className= "sticky top-0 z-40 w-full border-b border-white/10 bg-[#070919]/95 text-white backdrop-blur" >
     <div className="mx-auto flex-wrap flex max-w-screen items-center justify-between px-4 py-4" >
 
@@ -148,6 +149,7 @@ className = "rounded-full border border-white/40 px-4 py-2 text-xs font-semibold
           )}
 </motion.div>
   </div>
+  </header>
 
 {/* MOBILE DRAWER */ }
 <AnimatePresence>
@@ -155,7 +157,7 @@ className = "rounded-full border border-white/40 px-4 py-2 text-xs font-semibold
     <>
     {/* Overlay */ }
     < motion.div
-              className = "fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+              className = "fixed inset-0 bg-black/60 backdrop-blur-lg z-40"
 initial = {{ opacity: 0 }}
 animate = {{ opacity: 1 }}
 exit = {{ opacity: 0 }}
@@ -246,6 +248,6 @@ className = "rounded-lg border border-white/20 px-3 py-2 text-sm uppercase track
   </>
         )}
 </AnimatePresence>
-  </header>
+    </>
   );
 }

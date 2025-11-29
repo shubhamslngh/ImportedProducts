@@ -1,9 +1,6 @@
 import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
 
-const DEFAULT_API_BASE = 'https://importedproducts.in/wp-json/wc/v3';
-const FALLBACK_KEY = 'ck_dedb163e9f588c6e180da3d571ca6d2da207f420';
-const FALLBACK_SECRET = 'cs_673d249f681f18ada1abef173441c45ef78c74c0';
 
 class WooRequestError extends Error {
   status: number;
@@ -71,7 +68,7 @@ async function loadRawMethods(headers: Record<string, string>) {
     return [];
   }
 
-  const apiBase = process.env.WC_API_BASE || DEFAULT_API_BASE;
+  const apiBase = process.env.NEXT_WC_API_BASE || DEFAULT_API_BASE;
   const zones = await requestJson(`${apiBase}/shipping/zones`, headers);
   if (!Array.isArray(zones) || zones.length === 0) {
     return requestJson(`${apiBase}/shipping_methods`, headers);
@@ -95,8 +92,8 @@ async function loadRawMethods(headers: Record<string, string>) {
 }
 
 export async function GET() {
-  const consumerKey = process.env.WC_CONSUMER_KEY || FALLBACK_KEY;
-  const consumerSecret = process.env.WC_CONSUMER_SECRET || FALLBACK_SECRET;
+  const consumerKey = process.env.NEXT_WC_CONSUMER_KEY || FALLBACK_KEY;
+  const consumerSecret = process.env.NEXT_WC_CONSUMER_SECRET || FALLBACK_SECRET;
   const headers = {
     Authorization: `Basic ${Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64')}`,
   };

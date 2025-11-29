@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 
-const WP_GRAPHQL_ENDPOINT = 'https://importedproducts.in/graphql';
 
 const LOGIN_MUTATION = `
   mutation Login($username: String!, $password: String!) {

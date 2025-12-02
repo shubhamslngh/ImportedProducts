@@ -13,9 +13,17 @@ interface AddToCartButtonProps {
   productName: string;
   priceHtml?: string | null;
   image?: string | null;
+  requiresSelection?: boolean;
 }
 
-export function AddToCartButton({ productId, variationId, productName, priceHtml, image }: AddToCartButtonProps) {
+export function AddToCartButton({
+  productId,
+  variationId,
+  productName,
+  priceHtml,
+  image,
+  requiresSelection = false,
+}: AddToCartButtonProps) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { addItem } = useCart();
@@ -23,18 +31,36 @@ export function AddToCartButton({ productId, variationId, productName, priceHtml
   const { showSnackbar } = useSnackbar();
   const [addToCart] = useMutation(ADD_TO_CART_MUTATION);
 
+  const selectionReminder = 'Select a variant before adding this item to cart.';
+
   const handleAddToCart = async () => {
-    setStatus('loading');
+    if (status === 'loading') {
+      return;
+    }
+
     setErrorMessage(null);
+
+    const hasValidVariationId =
+      typeof variationId === 'number' && Number.isFinite(variationId) && variationId > 0;
+
+    if (requiresSelection && !hasValidVariationId) {
+      setStatus('error');
+      setErrorMessage(selectionReminder);
+      showSnackbar(selectionReminder, { variant: 'info' });
+      return;
+    }
+
     if (!authToken) {
       setStatus('error');
       setErrorMessage('Please log in to add items to your cart.');
       showSnackbar('Log in to add items to your cart.', { variant: 'info' });
       return;
     }
+
+    setStatus('loading');
+
     try {
-      const normalizedVariationId =
-        typeof variationId === 'number' && Number.isFinite(variationId) ? variationId : 0;
+      const normalizedVariationId = hasValidVariationId ? Number(variationId) : 0;
 
       await addToCart({
         variables: {

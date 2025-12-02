@@ -17,9 +17,12 @@ export function ProductDetailClient({ productId }: ProductDetailClientProps) {
   const { data, loading, error, refetch } = useQuery(GET_PRODUCT_DETAIL, {
     variables: { id: productId },
     skip: !productId,
+
   });
 
   const product = data?.product;
+  // console.log("Product data:", product);  
+
   const gallery = product?.galleryImages?.nodes ?? [];
   const [heroImage, setHeroImage] = useState<string>("");
   const [selectedVariationId, setSelectedVariationId] = useState<number | null>(
@@ -34,6 +37,7 @@ export function ProductDetailClient({ productId }: ProductDetailClientProps) {
     } else if (gallery[0]?.sourceUrl) {
       setHeroImage(gallery[0].sourceUrl);
     }
+
   }, [product?.image?.sourceUrl, gallery[0]?.sourceUrl]);
 
   useEffect(() => {
@@ -72,7 +76,10 @@ className = "mt-4 inline-flex items-center rounded-full bg-rose-600 px-5 py-2 te
 
 const description = stripHtml(product.description || "");
 const shortDescription = stripHtml(product.shortDescription || "");
-const activePriceHtml = selectedVariationPriceHtml ?? product.price;
+const resolvedPriceHtml = selectedVariationPriceHtml ?? product.price ?? null;
+const fallbackPriceText = resolvedPriceHtml
+  ? null
+  : product.salePrice ?? product.regularPrice ?? null;
 const isVariableProduct =
   (product?.type ? product.type.toUpperCase() : "") === "VARIABLE";
 
@@ -201,16 +208,26 @@ className = "space-y-6"
 <div>
   <h1 className="text-4xl font-bold" > { product.name } </h1>
 {
-  activePriceHtml && (
+  resolvedPriceHtml ? (
     <motion.p
-                initial={ { opacity: 0, y: 5 } }
-  animate = {{ opacity: 1, y: 0 }
+                  initial={ { opacity: 0, y: 5 } }
+    animate = {{ opacity: 1, y: 0 }
 }
 transition = {{ delay: 0.15 }}
 className = "text-2xl font-semibold mt-1"
-dangerouslySetInnerHTML = {{ __html: activePriceHtml }}
-              />
-            )}
+dangerouslySetInnerHTML = {{ __html: resolvedPriceHtml }}
+                />
+              ) : fallbackPriceText ? (
+    <motion.p
+                  initial={ { opacity: 0, y: 5 } }
+    animate = {{ opacity: 1, y: 0 }}
+    transition = {{ delay: 0.15 }}
+    className = "text-2xl font-semibold mt-1"
+  >
+  { fallbackPriceText }
+  </motion.p>
+              ) : null
+}
 </div>
 
 {/* Description */ }
@@ -254,8 +271,9 @@ className = "pt-4"
               productId={ product.databaseId }
 variationId = { selectedVariationId ?? undefined}
 productName = { product.name }
-priceHtml = { activePriceHtml }
+priceHtml = { resolvedPriceHtml ?? fallbackPriceText }
 image = { heroImage }
+requiresSelection = { isVariableProduct }
   />
   </motion.div>
   </motion.div>

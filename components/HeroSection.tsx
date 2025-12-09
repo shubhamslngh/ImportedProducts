@@ -5,65 +5,72 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@apollo/client";
 import { GET_HERO_METRICS } from "@/lib/queries";
 
+const FALLBACK_HIGHLIGHTS = [
+  { label: "Destination hubs", value: 42, suffix: "+", note: "Retail partners across MEA, EU & SEA" },
+  { label: "Customs clearance", value: 72, suffix: "h", note: "Average door-to-port turnaround" },
+  { label: "QC accuracy", value: 99.6, suffix: "%", note: "Audit-ready documentation & packing" },
+];
+
+const HERO_BADGES = [
+  "End-to-end export concierge",
+  "DUTY + compliance playbooks",
+  "Temperature & shock logging",
+  "BIS / CE ready paperwork",
+];
+
 export function HeroSection() {
   // 🔹 GraphQL: live metrics from WordPress/Woo
-  const { data, loading, error } = useQuery(GET_HERO_METRICS, {
+  const { data, loading } = useQuery(GET_HERO_METRICS, {
     fetchPolicy: "cache-first",
   });
 
-  // 🔹 Fallback static values (used if no data yet)
-  const fallbackHighlights = [
-    { label: "Destination hubs", value: 42, suffix: "+", note: "Retail partners across MEA, EU & SEA" },
-    { label: "Customs clearance", value: 72, suffix: "h", note: "Average door-to-port turnaround" },
-    { label: "QC accuracy", value: 99.6, suffix: "%", note: "Audit-ready documentation & packing" },
-  ];
-
-  const badges = [
-    "End-to-end export concierge",
-    "DUTY + compliance playbooks",
-    "Temperature & shock logging",
-    "BIS / CE ready paperwork",
-  ];
-
   // 🔹 Map API data → highlight cards
-  const highlights = useMemo(() => {
-    if (!data?.products || !data?.productCategories || !data?.posts) {
-      return fallbackHighlights;
-    }
+  const metricTotals = useMemo(() => {
+    if (!data) return null;
+    const products = data.products?.nodes?.length ?? 0;
+    const categories = data.productCategories?.nodes?.length ?? 0;
+    const stories = data.posts?.nodes?.length ?? 0;
+    const comments = data.comments?.nodes?.length ?? 0;
+    const orders = data.orders?.nodes?.length ?? 0;
+    const hasMetrics = products || categories || stories || comments || orders;
+    return hasMetrics ? { products, categories, stories, comments, orders } : null;
+  }, [data]);
 
-    const totalProducts =
-      data.products?.pageInfo?.offsetPagination?.total ?? fallbackHighlights[0].value;
-    const totalCategories =
-      data.productCategories?.pageInfo?.offsetPagination?.total ?? 7;
-    const totalStories =
-      data.posts?.pageInfo?.offsetPagination?.total ?? 10;
+  const highlights = useMemo(() => {
+    if (!metricTotals) return FALLBACK_HIGHLIGHTS;
 
     return [
       {
         label: "Live SKUs",
-        value: totalProducts,
+        value: metricTotals.products,
         suffix: "",
         note: "Import-ready products on the shelf",
       },
       {
-        label: "Active corridors",
-        value: totalCategories,
+        label: "Categories managed",
+        value: metricTotals.categories,
         suffix: "",
         note: "Buyer-facing categories live",
       },
       {
-        label: "Stories shipped",
-        value: totalStories,
+        label: "Brands Connected",
+        value: metricTotals.comments + metricTotals.orders,
         suffix: "+",
-        note: "Dispatches from our concierge desk",
+        note: "Dispatches & fulfilment logs filed",
       },
     ];
-  }, [data]);
+  }, [metricTotals]);
+
+  const formattedMetaLine = useMemo(() => {
+    if (!metricTotals) return null;
+    const formatNumber = (value: number) => new Intl.NumberFormat("en-IN").format(value);
+    return `${formatNumber(metricTotals.categories)} categories • ${formatNumber(
+      metricTotals.products
+    )} SKUs • ${formatNumber(metricTotals.orders)} completed consignments`;
+  }, [metricTotals]);
 
   // 🔹 Counter animation for highlights
-  const [counts, setCounts] = useState<number[]>(() =>
-    highlights.map(() => 0)
-  );
+  const [counts, setCounts] = useState<number[]>(() => highlights.map(() => 0));
 
   useEffect(() => {
     // reset when highlights change (e.g. when data arrives)
@@ -142,16 +149,26 @@ className = "text-3xl font-semibold leading-tight sm:text-4xl lg:text-5xl"
   India's friendly export desk for lifestyle hardware.
           </motion.h1>
 
-          {/* Description */ }
-  < motion.p
-            initial = {{ opacity: 0, y: 10 }}
-animate = {{ opacity: 1, y: 0 }}
-transition = {{ delay: 0.4 }}
-className = "text-base text-white/80 max-w-xl"
-  >
-  Consolidate premium accessories, finish compliance, and hand off to our ocean & air network. 
-            We choreograph every pallet so your overseas buyers just see ready - to - shelf stock.
+          {/* Description */}
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="text-base text-white/80 max-w-xl"
+          >
+            Consolidate premium accessories, finish compliance, and hand off to our ocean & air network. We choreograph
+            every pallet so your overseas buyers just see ready-to-shelf stock.
           </motion.p>
+          {formattedMetaLine && (
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.45 }}
+              className="text-sm font-semibold text-emerald-200/80"
+            >
+              {formattedMetaLine}
+            </motion.p>
+          )}
 
 {/* CTA Buttons */ }
 <div className="flex flex-wrap gap-4" >
@@ -185,7 +202,7 @@ variants = {{
 className = "grid gap-2 sm:grid-cols-2"
   >
 {
-  badges.map((badge) => (
+  HERO_BADGES.map((badge) => (
     <motion.li
                 key= { badge }
                 variants = {{

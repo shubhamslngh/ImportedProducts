@@ -445,34 +445,30 @@ export const GET_COUNTRIES = gql`
 `;
 export const GET_HERO_METRICS = gql`
   query GetHeroMetrics {
-    products(where: { status: PUBLISH }, first: 100) {
-      nodes {
-        id
-      }
-    }
-
-    categories: productCategories(first: 100) {
-      nodes {
-        id
-      }
-    }
-
-    posts(where: { status: PUBLISH }, first: 100) {
-      nodes {
-        id
-      }
-    }
-
-    comments(first: 100) {
-      nodes {
-        id
-      }
-    }
-
-    orders(where: { status: COMPLETED }, first: 100) {
-      nodes {
-        id
-      }
+  products(first: 100) {
+    nodes {
+      id
     }
   }
+
+  productCategories(first: 100) {
+    nodes {
+      id
+    }
+  }
+
+  posts(first: 100) {
+    nodes {
+      id
+    }
+  }
+
+  comments(first: 100) {
+    nodes {
+      id
+    }
+  }
+}
+
+
 `;

@@ -11,7 +11,7 @@ export default function ProductsPage() {
             <p className="text-sm uppercase tracking-[0.4em] text-slate-400">Shop the catalog</p>
             <h1 className="text-4xl font-bold">IMPORTED PRODUCTS</h1>
             <p className="text-base text-slate-600">
-              Browse curated cases, accessories, and concierge-only drops. Everything is powered by the same WooCommerce API as the Nuxt app.
+              Browse the best quality products which are export grade.
             </p>
           </div>
         </PageSection>

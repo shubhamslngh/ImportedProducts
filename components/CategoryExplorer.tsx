@@ -90,7 +90,7 @@ export function CategoryExplorer() {
                     isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
                   )}
                 >
-                  {category?.node?.count ?? 0} Items
+                  {category?.node?.count ?? 1} Items
                 </span>
                 <p className={clsx('mt-2 text-base font-semibold leading-tight', isActive ? 'text-white' : 'text-slate-900')}>
                   {category?.node?.name}

@@ -19,6 +19,11 @@ const LOGIN_MUTATION = `
         firstName
         lastName
         displayName: name
+        roles {
+          nodes {
+            name
+          }
+        }
       }
     }
   }
@@ -46,7 +51,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: result.errors?.[0]?.message || 'Login failed' }, { status: 401 });
     }
 
-    return NextResponse.json({ data: result.data.login });
+    const payload = result.data.login;
+    const user = payload?.user
+      ? {
+          ...payload.user,
+          roles: Array.isArray(payload.user.roles?.nodes)
+            ? payload.user.roles.nodes.map((node: any) => node?.name).filter(Boolean)
+            : [],
+        }
+      : null;
+
+    return NextResponse.json({ data: { ...payload, user } });
   } catch (error) {
     console.error('Login API error', error);
     return NextResponse.json({ error: 'Unexpected error' }, { status: 500 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@apollo/client';
 import clsx from 'clsx';
 import { GET_CATEGORIES } from '@/lib/queries';
@@ -31,6 +31,7 @@ export function CategoryExplorer() {
   });
   const categories = useMemo(() => data?.productCategories?.edges ?? [], [data]);
   const [activeCategory, setActiveCategory] = useState<string>('');
+  const gridAnchorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!activeCategory && categories.length) {
@@ -43,6 +44,11 @@ export function CategoryExplorer() {
     const name = cat?.node?.name;
     if (!name) return;
     setActiveCategory(name);
+    const anchor = gridAnchorRef.current;
+    if (anchor) {
+      const top = window.scrollY + anchor.getBoundingClientRect().top - 210;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
   };
 
   return (
@@ -61,50 +67,50 @@ export function CategoryExplorer() {
       {error && (
         <div className="rounded-3xl border border-rose-200 bg-rose-50/80 p-6 text-sm text-rose-700">{error.message}</div>
       )}
-      <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-        {categories.map((category: any) => {
-          const isActive = activeCategory === category?.node?.name;
-          const copy = pickCopy(category?.node?.slug);
-          return (
-            <button
-              key={category?.node?.slug}
-              type="button"
-              onClick={() => handleSelect(category)}
-              className={clsx(
-                'flex min-w-[14rem] flex-col items-start rounded-3xl border px-5 py-4 text-left shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-                isActive
-                  ? 'border-transparent bg-gradient-to-br from-indigo-800  to-black text-white shadow-lg focus-visible:ring-white/70'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 focus-visible:ring-slate-500/30'
-              )}
-            >
-              <span
+      <div className="sticky top-32 z-10 -mx-4 rounded-3xl border border-slate-100 bg-white/90 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-none sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-0">
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+          {categories.map((category: any) => {
+            const isActive = activeCategory === category?.node?.name;
+            const copy = pickCopy(category?.node?.slug);
+            return (
+              <button
+                key={category?.node?.slug}
+                type="button"
+                onClick={() => handleSelect(category)}
                 className={clsx(
-                  'rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em]',
-                  isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                  'group min-w-[9.5rem] shrink-0 rounded-2xl border px-4 py-3 text-left text-sm shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+                  isActive
+                    ? 'border-transparent bg-gradient-to-br from-indigo-800 to-black text-white shadow-lg focus-visible:ring-white/70'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 focus-visible:ring-slate-500/30'
                 )}
               >
-                {category?.node?.count ?? 0} Items
-              </span>
-              <p className={clsx('mt-3 text-lg font-bold', isActive ? 'text-white' : 'text-slate-900')}>
-                {category?.node?.name}
-              </p>
-              <p className={clsx('mt-1 text-sm leading-snug', isActive ? 'text-white/80' : 'text-slate-500')}>
-                {copy.title}
-              </p>
-              <p className={clsx('text-xs', isActive ? 'text-white/70' : 'text-slate-400')}>{copy.note}</p>
-              <span
-                className={clsx(
-                  'mt-4 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em]',
-                  isActive ? 'text-white' : 'text-indigo-500'
-                )}
-              >
-                Build manifest
-                <span aria-hidden>→</span>
-              </span>
-            </button>
-          );
-        })}
+                <span
+                  className={clsx(
+                    'rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.35em]',
+                    isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                  )}
+                >
+                  {category?.node?.count ?? 0} Items
+                </span>
+                <p className={clsx('mt-2 text-base font-semibold leading-tight', isActive ? 'text-white' : 'text-slate-900')}>
+                  {category?.node?.name}
+                </p>
+                <p className={clsx('text-xs leading-snug', isActive ? 'text-white/80' : 'text-slate-500')}>{copy.title}</p>
+                <span
+                  className={clsx(
+                    'mt-3 inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.4em]',
+                    isActive ? 'text-white' : 'text-indigo-500 group-hover:text-indigo-700'
+                  )}
+                >
+                  Tap
+                  <span aria-hidden>→</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
+      <div ref={gridAnchorRef} aria-hidden />
       {activeCategory && <ProductGrid category={activeCategory} />}
     </section>
   );

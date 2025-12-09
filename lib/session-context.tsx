@@ -2,6 +2,7 @@
 
 import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { SERVER_WP_GRAPHQL_ENDPOINT } from '@/lib/env.server';
+import { SessionUser } from '@/lib/types';
 const REFRESH_AUTH_MUTATION = `
   mutation RefreshAuthToken($refreshToken: String!) {
     refreshToken(input: { refreshToken: $refreshToken }) {
@@ -12,16 +13,6 @@ const REFRESH_AUTH_MUTATION = `
   }
 `;
 
-
-type SessionUser = {
-  username?: string | null;
-  email?: string | null;
-  id?: string | null;
-  databaseId?: number | null;
-  firstName?: string | null;
-  lastName?: string | null;
-  displayName?: string | null;
-};
 
 type SessionStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -86,6 +77,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         firstName: payload.firstName ?? base?.firstName ?? null,
         lastName: payload.lastName ?? base?.lastName ?? null,
         displayName: payload.name ?? base?.displayName ?? null,
+        roles:
+          Array.isArray(payload.roles?.nodes)
+            ? payload.roles.nodes.map((node: any) => node?.name).filter(Boolean)
+            : payload.roles ?? base?.roles ?? null,
       };
     },
     [user],

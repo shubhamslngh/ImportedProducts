@@ -139,7 +139,7 @@ animate = {{ opacity: 1, y: 0 }}
 transition = {{ delay: 0.3, duration: 0.7 }}
 className = "text-3xl font-semibold leading-tight sm:text-4xl lg:text-5xl"
   >
-  India & apos;s friendly export desk for lifestyle hardware.
+  India's friendly export desk for lifestyle hardware.
           </motion.h1>
 
           {/* Description */ }
